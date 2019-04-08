@@ -6,6 +6,7 @@ A physics simulation for a quad-copter drone
 - Unity Version 2018.3.0
 
 ## Collaborators
+- Joshua Riley
 - Adriel Bustamente
 - Jonathan Woolf
 - Colton Vosburg
