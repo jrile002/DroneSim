@@ -16,13 +16,23 @@ public class DroneMovementScript : MonoBehaviour
 	Rigidbody drone;
 	// Total upward force from propellers
 	public float lift;
+	// Propeller forces
+	public float maxLift = 300;
+	public float minLift = 100;
+	public float forceAdjustmentA = 135; // Combination of forward/backward and left/right movement
+	public float forceAdjustmentB = 120; // forceAdjustmentA && rotational movement
+	public float forceAdjustmentC = 150; // forceAdjustmentA && up
+	public float forceAdjustmentD = 110;  // forceAdjustmentB && down
+	public float forceAdjustmentE = 140;   // forceAdjustmentB && up movement
+	public float forceAdjustmentF = 105;   // forceAdjustmentB && down movement
 	// Drone movement speeds
-	public float forwardMovementAmount = 100.0f;
-	public float sideMovementAmount = 100.0f;
+	public float movementAmount = 200.0f;
 	// Associated movement tilts
-	private float tiltAmountForward = 0;
-	private float tiltAmountSideways;
-	private float tiltVelocityForward;
+	public float tiltAmountForward = 20;
+	public float tiltAmountSideways = 20;
+	private float tiltForward = 0;
+	private float tiltSideways = 0;
+	private float tiltForwardVelocity;
 	private float tiltAmountVelocity;
 	// Drone rotation
 	private float desiredYRotation;
@@ -44,21 +54,22 @@ public class DroneMovementScript : MonoBehaviour
 		MovementForwardBackward();
 		Rotation();
 		ClampingSpeedValues();
-		LiftCompensation();
+		AdjustLift();
+		RegulateForce();
 		
 		drone.AddRelativeForce(Vector3.up * lift);
 		drone.rotation = Quaternion.Euler(
-			new Vector3(tiltAmountForward, currentYRotation, tiltAmountSideways)
+			new Vector3(tiltForward, currentYRotation, tiltSideways)
 		);
 	}
 	
 	// Simulates upward and downward movement
 	void MovementUpDown(){		
 		if (Input.GetKey(KeyCode.I)){
-			lift = 300;
+			lift = maxLift;
 		}
 		else if (Input.GetKey(KeyCode.K)){
-			lift = 50;
+			lift = minLift;
 		}
 		else if (!Input.GetKey(KeyCode.I) && !Input.GetKey(KeyCode.K) && (Mathf.Abs(Input.GetAxis("Vertical")) < 0.2f && Mathf.Abs(Input.GetAxis("Horizontal")) < 0.2f)){
 			// Hovers when stationary
@@ -70,12 +81,12 @@ public class DroneMovementScript : MonoBehaviour
 	// Simulates forward and backward movement
 	void MovementForwardBackward(){
 		if (Mathf.Abs(Input.GetAxis("Vertical")) > 0.2f){
-			drone.AddRelativeForce(Vector3.forward * Input.GetAxis("Vertical") * forwardMovementAmount);
-			tiltAmountForward = Mathf.SmoothDamp(tiltAmountForward, 20 * Input.GetAxis("Vertical"), ref tiltVelocityForward, 0.1f);
+			drone.AddRelativeForce(Vector3.forward * Input.GetAxis("Vertical") * movementAmount);
+			tiltForward = Mathf.SmoothDamp(tiltForward, tiltAmountForward * Input.GetAxis("Vertical"), ref tiltForwardVelocity, 0.1f);
 			
 		}
 		else {
-			tiltAmountForward = Mathf.SmoothDamp(tiltAmountForward, 0, ref tiltVelocityForward, 0.1f);
+			tiltForward = Mathf.SmoothDamp(tiltForward, 0, ref tiltForwardVelocity, 0.1f);
 		}
 		
 	}
@@ -83,11 +94,11 @@ public class DroneMovementScript : MonoBehaviour
 	// Simulates left and right movement
 	void MovementLeftRight(){
 		if (Mathf.Abs(Input.GetAxis("Horizontal")) > 0.2f){
-			drone.AddRelativeForce(Vector3.right * Input.GetAxis("Horizontal") * sideMovementAmount);
-			tiltAmountSideways = Mathf.SmoothDamp(tiltAmountSideways, -20 * Input.GetAxis("Horizontal"), ref tiltAmountVelocity, 0.1f);
+			drone.AddRelativeForce(Vector3.right * Input.GetAxis("Horizontal") * movementAmount);
+			tiltSideways = Mathf.SmoothDamp(tiltSideways, -1 * tiltAmountSideways * Input.GetAxis("Horizontal"), ref tiltAmountVelocity, 0.1f);
 		}
 		else {
-			tiltAmountSideways = Mathf.SmoothDamp(tiltAmountSideways, 0, ref tiltAmountVelocity, 0.1f);
+			tiltSideways = Mathf.SmoothDamp(tiltSideways, 0, ref tiltAmountVelocity, 0.1f);
 		}
 	}
 	
@@ -113,27 +124,70 @@ public class DroneMovementScript : MonoBehaviour
 		}
 	}
 	
-	// Compensate the lift for when the drone is tilted
-	void LiftCompensation(){
-		if (Mathf.Abs(Input.GetAxis("Vertical")) > 0.2f){
+	// Adjust the lift for when the drone is tilted
+	void AdjustLift(){
+		if ((Mathf.Abs(Input.GetAxis("Vertical")) > 0.2f) || (Mathf.Abs(Input.GetAxis("Horizontal")) > 0.2f)){
 			if (!Input.GetKey(KeyCode.I) && !Input.GetKey(KeyCode.K) && !Input.GetKey(KeyCode.J) && !Input.GetKey(KeyCode.L)){
 				drone.velocity = new Vector3(drone.velocity.x, Mathf.Lerp(drone.velocity.y, 0, Time.deltaTime*5), drone.velocity.z);
-				lift = 135;
+				lift = forceAdjustmentA;
 			}
-			else if (Input.GetKey(KeyCode.J) || Input.GetKey(KeyCode.L)){
+			else if (!Input.GetKey(KeyCode.I) && !Input.GetKey(KeyCode.K) && (Input.GetKey(KeyCode.J) || Input.GetKey(KeyCode.L))){
 				drone.velocity = new Vector3(drone.velocity.x, Mathf.Lerp(drone.velocity.y, 0, Time.deltaTime*5), drone.velocity.z);
-				lift = 150;
+				lift = forceAdjustmentB;
+			}
+			else if (Input.GetKey(KeyCode.I) && (Input.GetKey(KeyCode.J) || Input.GetKey(KeyCode.L))){
+				drone.velocity = new Vector3(drone.velocity.x, Mathf.Lerp(drone.velocity.y, 0, Time.deltaTime*5), drone.velocity.z);
+				lift = forceAdjustmentE;
+			}
+			else if (Input.GetKey(KeyCode.K) && (Input.GetKey(KeyCode.J) || Input.GetKey(KeyCode.L))){
+				drone.velocity = new Vector3(drone.velocity.x, Mathf.Lerp(drone.velocity.y, 0, Time.deltaTime*5), drone.velocity.z);
+				lift = forceAdjustmentF;
+			}
+			else if (Input.GetKey(KeyCode.I) && !Input.GetKey(KeyCode.K)){
+				lift = forceAdjustmentC;
+			}
+			else if (!Input.GetKey(KeyCode.I) && Input.GetKey(KeyCode.K)){
+				lift = forceAdjustmentD;
 			}
 		}
-		if (Mathf.Abs(Input.GetAxis("Horizontal")) > 0.2f){
-			if (!Input.GetKey(KeyCode.I) && !Input.GetKey(KeyCode.K) && !Input.GetKey(KeyCode.J) && !Input.GetKey(KeyCode.L)){
-				drone.velocity = new Vector3(drone.velocity.x, Mathf.Lerp(drone.velocity.y, 0, Time.deltaTime*5), drone.velocity.z);
-				lift = 140;
-			}
-			else if (Input.GetKey(KeyCode.J) || Input.GetKey(KeyCode.L)){
-				drone.velocity = new Vector3(drone.velocity.x, Mathf.Lerp(drone.velocity.y, 0, Time.deltaTime*5), drone.velocity.z);
-				lift = 145;
-			}
+	}
+	
+	void RegulateForce(){
+		if (forceAdjustmentA > maxLift){
+			forceAdjustmentA = maxLift;
+		}
+		else if (forceAdjustmentA < minLift){
+			forceAdjustmentA = minLift;
+		}
+		if (forceAdjustmentB > maxLift){
+			forceAdjustmentB = maxLift;
+		}
+		else if (forceAdjustmentB < minLift){
+			forceAdjustmentB = minLift;
+		}
+		if (forceAdjustmentC > maxLift){
+			forceAdjustmentC = maxLift;
+		}
+		else if (forceAdjustmentC < minLift){
+			forceAdjustmentC = minLift;
+		}
+		if (forceAdjustmentD > maxLift){
+			forceAdjustmentD = maxLift;
+		}
+		else if (forceAdjustmentD < minLift){
+			forceAdjustmentD = minLift;
+		}
+		if (forceAdjustmentE > maxLift){
+			forceAdjustmentE = maxLift;
+		}
+		else if (forceAdjustmentE < minLift){
+			forceAdjustmentE = minLift;
+		}
+		if (forceAdjustmentF > maxLift){
+			forceAdjustmentF = maxLift;
+		}
+		else if (forceAdjustmentF < minLift){
+			forceAdjustmentF = minLift;
 		}
 	}
 	
