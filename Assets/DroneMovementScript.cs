@@ -18,7 +18,7 @@ public class DroneMovementScript : MonoBehaviour
 	public float lift;
 	// Propeller forces
 	public float maxLift = 300;
-	public float minLift = 100;
+	public float minLift = 60;
 	public float forceAdjustmentA = 135; // Combination of forward/backward and left/right movement
 	public float forceAdjustmentB = 120; // forceAdjustmentA && rotational movement
 	public float forceAdjustmentC = 150; // forceAdjustmentA && up

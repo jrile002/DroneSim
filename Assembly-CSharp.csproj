@@ -55,6 +55,7 @@
   <ItemGroup>
      <Compile Include="Assets\CameraFollowScript.cs" />
      <Compile Include="Assets\DroneMovementScript.cs" />
+     <Compile Include="Assets\PropellerSpinScript.cs" />
  <Reference Include="Unity.TextMeshPro.Editor">
  <HintPath>C:/Users/Josh/Documents/DroneSim/Library/ScriptAssemblies/Unity.TextMeshPro.Editor.dll</HintPath>
  </Reference>
